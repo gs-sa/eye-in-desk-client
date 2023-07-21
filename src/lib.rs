@@ -1,10 +1,21 @@
+use camera_rpc::{
+    camera_service_client::CameraServiceClient, ArucoPosition, GetArucosPositionRequest,
+};
+use projector_rpc::{
+    projector_service_client::ProjectorServiceClient, DrawArucosRequest,
+    DrawCirclesRequest, DrawRequest, DrawTextsRequest, GetDrawableSizeRequest,
+};
 
-use camera_rpc::{ArucoPosition, GetArucosPositionRequest, camera_service_client::CameraServiceClient};
-use projector_rpc::{GetDrawableSizeRequest, Aruco, DrawArucosRequest, projector_service_client::ProjectorServiceClient, Text, Circle, DrawTextsRequest, DrawCirclesRequest, DrawRequest};
-use sim_rpc::{web_service_client::WebServiceClient, Object, ShowObjectsRequest, UpdateRobotRequest};
-use robot_rpc::{robot_service_client::RobotServiceClient, GetRobotInfoRequest, SetRobotTargetRequest};
+pub use projector_rpc::{Aruco, Circle, Text};
 
-use nalgebra::{Isometry3, Matrix4, Rotation3, Vector3};
+use robot_rpc::{
+    robot_service_client::RobotServiceClient, GetRobotInfoRequest, SetRobotTargetRequest,
+};
+use sim_rpc::{
+    web_service_client::WebServiceClient, Object, ShowObjectsRequest, UpdateRobotRequest,
+};
+
+use nalgebra::{Isometry3, Matrix3, Matrix4, Rotation3, Vector3};
 use tonic::{codegen::StdError, transport::Channel, Status};
 
 mod sim_rpc {
@@ -23,7 +34,7 @@ mod robot_rpc {
     tonic::include_proto!("robot");
 }
 
-pub fn array_to_isometry(array: &[f64]) -> Isometry3<f64> {
+fn array_to_isometry(array: &[f64]) -> Isometry3<f64> {
     let rot = Rotation3::from_matrix(
         &Matrix4::from_column_slice(array)
             .remove_column(3)
@@ -45,13 +56,52 @@ static SIM_PORT: u16 = 50052;
 static CAM_PORT: u16 = 50053;
 static ROBOT_PORT: u16 = 50054;
 
+pub struct Homograph {
+    data: Matrix3<f64>,
+}
+
+impl Default for Homograph {
+    fn default() -> Self {
+        Homograph {
+            data: Matrix3::from_row_slice(&[
+                -1.78297537e+00,
+                8.94943346e-02,
+                2.65898111e+03,
+                -1.27505205e-02,
+                1.75222491e+00,
+                -6.76080033e+02,
+                3.11334955e-05,
+                9.57327657e-05,
+                1.00000000e+00,
+            ]),
+        }
+    }
+}
+
+impl Homograph {
+    pub fn cam_to_projector(&self, cam_pos: Position) -> Position {
+        let cam = Vector3::new(cam_pos.x, cam_pos.y, 1.);
+        let proj = self.data * cam;
+        let proj = proj.scale(proj.z.recip());
+        Position {
+            x: proj.x,
+            y: proj.y,
+        }
+    }
+}
+
+pub struct Position {
+    pub x: f64,
+    pub y: f64,
+}
+
+#[derive(Clone)]
 pub struct EyeInDesk {
     cam_client: CameraServiceClient<Channel>,
     proj_client: ProjectorServiceClient<Channel>,
     sim_client: WebServiceClient<Channel>,
     robot_client: RobotServiceClient<Channel>,
 }
-
 
 impl EyeInDesk {
     /// connect with defalut address
