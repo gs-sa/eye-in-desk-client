@@ -13,8 +13,9 @@ use robot_rpc::{
     robot_service_client::RobotServiceClient, GetRobotInfoRequest, SetRobotTargetRequest,
 };
 use sim_rpc::{
-    web_service_client::WebServiceClient, Object, ShowObjectsRequest, UpdateRobotRequest,
+    web_service_client::WebServiceClient, ShowObjectsRequest, UpdateRobotRequest,
 };
+pub use sim_rpc::Object;
 
 use nalgebra::{Isometry3, Matrix3, Matrix4, Rotation3, Vector3};
 use tonic::{codegen::StdError, transport::Channel, Status};
