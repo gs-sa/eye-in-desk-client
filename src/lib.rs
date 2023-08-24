@@ -100,7 +100,7 @@ pub struct EyeInDesk {
     cam_client: CameraServiceClient<Channel>,
     proj_client: ProjectorServiceClient<Channel>,
     sim_client: WebServiceClient<Channel>,
-    robot_client: RobotServiceClient<Channel>,
+    robot_client: Option<RobotServiceClient<Channel>>,
 }
 
 impl EyeInDesk {
@@ -122,7 +122,10 @@ impl EyeInDesk {
             CameraServiceClient::connect(cam_addr).await.unwrap();
         let proj_client = ProjectorServiceClient::connect(proj_addr).await.unwrap();
         let sim_client = WebServiceClient::connect(sim_addr).await.unwrap();
-        let robot_client = RobotServiceClient::connect(robot_addr).await.unwrap();
+        let robot_client = match RobotServiceClient::connect(robot_addr).await {
+            Ok(c) => Some(c),
+            Err(_) => None,
+        };
         EyeInDesk {
             cam_client,
             proj_client,
@@ -188,7 +191,7 @@ impl EyeInDesk {
     }
 
     pub async fn get_real_robot_state(&mut self) -> Result<RobotState, Status> {
-        self.robot_client
+        self.robot_client.clone().ok_or(Status::data_loss("no robot connection"))?
             .get_robot_info(GetRobotInfoRequest {})
             .await
             .map(|resp| {
@@ -201,7 +204,7 @@ impl EyeInDesk {
     }
 
     pub async fn set_real_robot_target(&mut self, transfrom: Isometry3<f64>) -> Result<(), Status> {
-        self.robot_client
+        self.robot_client.clone().ok_or(Status::data_loss("no robot connection"))?
             .set_robot_target(SetRobotTargetRequest {
                 t: transfrom.to_matrix().as_slice().to_vec(),
             })
