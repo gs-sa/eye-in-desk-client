@@ -13,6 +13,7 @@ async fn main() {
                 y: a.y,
                 z: 0.,
                 rot: a.rot,
+                scale: 1.,
             })
             .collect::<Vec<_>>();
         eid.update_virtual_objects(objects).await.unwrap();

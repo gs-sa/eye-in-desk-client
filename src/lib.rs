@@ -12,10 +12,8 @@ pub use projector_rpc::{Aruco, Circle, Text};
 use robot_rpc::{
     robot_service_client::RobotServiceClient, GetRobotInfoRequest, SetRobotTargetRequest,
 };
-use sim_rpc::{
-    web_service_client::WebServiceClient, ShowObjectsRequest, UpdateRobotRequest,
-};
 pub use sim_rpc::Object;
+use sim_rpc::{web_service_client::WebServiceClient, ShowObjectsRequest, UpdateRobotRequest};
 
 use nalgebra::{Isometry3, Matrix4, Rotation3, Vector3};
 use tonic::{codegen::StdError, transport::Channel, Status};
@@ -179,7 +177,9 @@ impl EyeInDesk {
     }
 
     pub async fn get_real_robot_state(&mut self) -> Result<RobotState, Status> {
-        self.robot_client.clone().ok_or(Status::data_loss("no robot connection"))?
+        self.robot_client
+            .clone()
+            .ok_or(Status::data_loss("no robot connection"))?
             .get_robot_info(GetRobotInfoRequest {})
             .await
             .map(|resp| {
@@ -192,7 +192,9 @@ impl EyeInDesk {
     }
 
     pub async fn set_real_robot_target(&mut self, transfrom: Isometry3<f64>) -> Result<(), Status> {
-        self.robot_client.clone().ok_or(Status::data_loss("no robot connection"))?
+        self.robot_client
+            .clone()
+            .ok_or(Status::data_loss("no robot connection"))?
             .set_robot_target(SetRobotTargetRequest {
                 t: transfrom.to_matrix().as_slice().to_vec(),
             })
@@ -262,6 +264,7 @@ async fn eye_in_desk_update_virtaul_objects() {
         id: 0,
         z: 0.0,
         rot: 0.0,
+        scale: 1.0,
     }];
     eid.update_virtual_objects(objects).await.unwrap();
 }
