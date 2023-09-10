@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 
 #[derive(Deserialize, Serialize, Debug)]
-pub(super) struct EIDConfigJSON {
+pub struct EIDConfigJSON {
     pub homography: Vec<f64>,
 }
 
@@ -15,7 +15,7 @@ impl EIDConfigJSON {
         Ok(a)
     }
 
-    pub fn create_config_file(path: &str) -> anyhow::Result<()> {
+    pub fn create_config_file(path: &str) -> anyhow::Result<Self> {
         let config = EIDConfigJSON {
             homography: vec![
                 1.0, 0.0, 0.0, //
@@ -25,12 +25,18 @@ impl EIDConfigJSON {
         };
         let config_file = serde_json::to_string_pretty(&config)?;
         std::fs::write(path, config_file)?;
+        Ok(config)
+    }
+
+    pub fn write_defalut(&self)  -> anyhow::Result<()> {
+        let config_file = serde_json::to_string_pretty(self)?;
+        std::fs::write("config.json", config_file)?;
         Ok(())
     }
 
     pub fn defalut() -> Self {
         let Ok(config) = Self::read_config_file("config.json") else {
-            if let Ok(config) = Self::read_config_file("config.json") {
+            if let Ok(config) = Self::create_config_file("config.json") {
                 return config
             } else {
                 panic!("Failed to create config file")
@@ -41,15 +47,29 @@ impl EIDConfigJSON {
 }
 
 #[derive(Clone)]
-pub(crate) struct EIDConfig {
+pub struct EIDConfig {
     pub homography: Homography,
 }
 
 impl EIDConfig {
     fn from_json(json: EIDConfigJSON) -> Self {
-        let homography = Matrix3::from_row_slice(&json.homography);
+        let homography = Matrix3::from_column_slice(&json.homography);
         let homography = Homography { data: homography };
         EIDConfig { homography }
+    }
+
+    pub fn to_json(&self) -> EIDConfigJSON {
+        EIDConfigJSON {
+            homography: self.homography.data.as_slice().to_vec()
+        }
+    }
+
+    pub fn from_matrix(m: Matrix3<f64>) -> Self {
+        EIDConfig {
+            homography: Homography {
+                data: m
+            }
+        }
     }
 
     pub fn default() -> Self {
@@ -64,13 +84,13 @@ impl EIDConfig {
 
 #[derive(Clone)]
 pub struct Homography {
-    data: Matrix3<f64>,
+    pub data: Matrix3<f64>,
 }
 
 impl Homography {
     pub fn cam_to_projector(&self, cam_pos: Position) -> Position {
         let cam = Vector3::new(cam_pos.x, cam_pos.y, 1.);
-        let proj: nalgebra::Matrix<f64, nalgebra::Const<3>, nalgebra::Const<1>, nalgebra::ArrayStorage<f64, 3, 1>> = self.data * cam;
+        let proj = self.data * cam;
         let proj = proj.scale(proj.z.recip());
         Position {
             x: proj.x,
@@ -79,6 +99,7 @@ impl Homography {
     }
 }
 
+#[derive(Debug)]
 pub struct Position {
     pub x: f64,
     pub y: f64,

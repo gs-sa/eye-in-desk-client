@@ -39,6 +39,8 @@ mod robot_rpc {
 mod config;
 pub use config::Position;
 
+mod calibration;
+
 fn array_to_isometry(array: &[f64]) -> Isometry3<f64> {
     let rot = Rotation3::from_matrix(
         &Matrix4::from_column_slice(array)
@@ -67,12 +69,13 @@ pub struct EyeInDesk {
     proj_client: ProjectorServiceClient<Channel>,
     sim_client: WebServiceClient<Channel>,
     robot_client: Option<RobotServiceClient<Channel>>,
-    config: EIDConfig,
+    pub config: EIDConfig,
 }
 
 pub struct ArucoDesktopPosition {
     pub id: i32,
     pub position: Position,
+    pub rot: f32,
 }
 
 impl EyeInDesk {
@@ -124,6 +127,7 @@ impl EyeInDesk {
                         x: a.x as f64,
                         y: a.y as f64,
                     }),
+                    rot: a.rot
                 })
                 .collect()
         })

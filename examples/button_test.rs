@@ -23,7 +23,7 @@ async fn main() {
         if let Some(_button) = arucos.iter().find(|a|a.id == 10) {
             if press_filter.0 < 10 {press_filter.0 += 1}
             if press_filter.1 > 0 {press_filter.1 -= 1}
-            // let p = h.cam_to_projector(Position{x: button.x as f64, y: button.y  as f64});
+            
             eid.place_circles(vec![Circle{
                 x: 0. ,
                 y: 0. ,
