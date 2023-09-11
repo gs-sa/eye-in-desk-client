@@ -14,7 +14,8 @@ async fn main() {
                 Circle {
                     x: aruco.position.x as f32,
                     y: aruco.position.y as f32,
-                    radius: 100.
+                    radius: 100.,
+                    fill: false,
                 }
             ]).await.unwrap();    
         } else {

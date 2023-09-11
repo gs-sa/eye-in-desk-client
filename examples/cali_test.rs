@@ -33,14 +33,11 @@ async fn aruco_track(eid: &mut EyeInDesk) {
                 Circle {
                     x: aruco.position.x as f32,
                     y: aruco.position.y as f32,
-                    radius: 150.
+                    radius: 150.,
+                    fill: false,
                 }
             ]).await.unwrap();
         }
         eid.clear_and_draw().await.unwrap();
     }
 }
-
-// async fn heat_map(eid: &mut EyeInDesk) {
-//     eid.clear_and_draw().await.unwrap();
-// }

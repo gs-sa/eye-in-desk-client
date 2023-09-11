@@ -60,6 +60,7 @@ async fn main() {
                     y: mem.arucos.1,
                     z: 0.025,
                     rot: mem.arucos.2,
+                    scale: 1.,
                 }
             ]).await.unwrap();
         } else {
