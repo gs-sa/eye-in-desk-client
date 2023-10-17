@@ -4,16 +4,21 @@ use camera_rpc::{
 use config::EIDConfig;
 use projector_rpc::{
     projector_service_client::ProjectorServiceClient, DrawArucosRequest, DrawCirclesRequest,
-    DrawRequest, DrawTextsRequest, GetDrawableSizeRequest, Line, DrawLinesRequest, DrawRectanglesRequest, Rectangle,
+    DrawLinesRequest, DrawRectanglesRequest, DrawRequest, DrawTextsRequest, GetDrawableSizeRequest,
+    Line, Rectangle,
 };
 
 pub use projector_rpc::{Aruco, Circle, Text};
 
 use robot_rpc::{
-    robot_service_client::RobotServiceClient, GetRobotInfoRequest, SetRobotTargetRequest, SetRobotModeRequest,
+    robot_service_client::RobotServiceClient, GetRobotInfoRequest, SetRobotModeRequest,
+    SetRobotTargetRequest,
 };
 pub use sim_rpc::Object;
-use sim_rpc::{web_service_client::WebServiceClient, ShowObjectsRequest, UpdateRobotRequest, CameraControlRequest};
+use sim_rpc::{
+    web_service_client::WebServiceClient, CameraControlRequest, ShowObjectsRequest,
+    UpdateRobotRequest,
+};
 
 use nalgebra::{Isometry3, Matrix4, Rotation3, Vector3};
 use tonic::{codegen::StdError, transport::Channel, Status};
@@ -76,6 +81,11 @@ pub struct ArucoDesktopPosition {
     pub rot: f32,
 }
 
+pub enum RobotMode {
+    Target,
+    Drag,
+}
+
 impl EyeInDesk {
     /// connect with defalut address
     pub async fn default_connect() -> Self {
@@ -125,7 +135,7 @@ impl EyeInDesk {
                         x: a.x as f64,
                         y: a.y as f64,
                     }),
-                    rot: a.rot
+                    rot: a.rot,
                 })
                 .collect()
         })
@@ -163,11 +173,17 @@ impl EyeInDesk {
     }
 
     pub async fn place_lines(&mut self, lines: Vec<Line>) -> Result<(), Status> {
-        self.proj_client.draw_lines(DrawLinesRequest {lines}).await.map(|_|())
+        self.proj_client
+            .draw_lines(DrawLinesRequest { lines })
+            .await
+            .map(|_| ())
     }
 
     pub async fn place_rects(&mut self, rectangles: Vec<Rectangle>) -> Result<(), Status> {
-        self.proj_client.draw_rectangles(DrawRectanglesRequest {rectangles}).await.map(|_|())
+        self.proj_client
+            .draw_rectangles(DrawRectanglesRequest { rectangles })
+            .await
+            .map(|_| ())
     }
 
     pub async fn clear_and_draw(&mut self) -> Result<(), Status> {
@@ -189,7 +205,13 @@ impl EyeInDesk {
     }
 
     pub async fn camera_control(&mut self, rotate_left: f32, rotate_up: f32) -> Result<(), Status> {
-        self.sim_client.camera_control(CameraControlRequest {rotate_left, rotate_up}).await.map(|_| ())
+        self.sim_client
+            .camera_control(CameraControlRequest {
+                rotate_left,
+                rotate_up,
+            })
+            .await
+            .map(|_| ())
     }
 
     pub async fn get_real_robot_state(&mut self) -> Result<RobotState, Status> {
@@ -218,8 +240,17 @@ impl EyeInDesk {
             .map(|_| ())
     }
 
-    pub async fn set_robot_mode(&mut self, mode: i32) -> Result<(), Status> {
-        self.robot_client.clone().ok_or(Status::data_loss("no robot connection"))?.set_robot_mode(SetRobotModeRequest {mode}).await.map(|_| ())
+    pub async fn set_robot_mode(&mut self, mode: RobotMode) -> Result<(), Status> {
+        let mode = match mode {
+            RobotMode::Target => 0,
+            RobotMode::Drag => 1,
+        };
+        self.robot_client
+            .clone()
+            .ok_or(Status::data_loss("no robot connection"))?
+            .set_robot_mode(SetRobotModeRequest { mode })
+            .await
+            .map(|_| ())
     }
 }
 
@@ -272,26 +303,26 @@ async fn eye_in_desk_draw() {
     // }])
     // .await
     // .unwrap();
-    eid.place_lines(vec![
-        Line {
-            x1:0.,
-            y1:0.,
-            x2:500.,
-            y2:500.,
-            width: 20.,
-        }
-    ]).await.unwrap();
+    eid.place_lines(vec![Line {
+        x1: 0.,
+        y1: 0.,
+        x2: 500.,
+        y2: 500.,
+        width: 20.,
+    }])
+    .await
+    .unwrap();
 
-    eid.place_rects(vec![
-        Rectangle {
-            x: 50.,
-            y: 50.,
-            width: 300.,
-            height: 300.,
-            line_width: 20.,
-            fill: false,
-        }
-    ]).await.unwrap();
+    eid.place_rects(vec![Rectangle {
+        x: 50.,
+        y: 50.,
+        width: 300.,
+        height: 300.,
+        line_width: 20.,
+        fill: false,
+    }])
+    .await
+    .unwrap();
     eid.clear_and_draw().await.unwrap();
 }
 
@@ -320,7 +351,7 @@ async fn eye_in_desk_update_virtaul_robot() {
 #[tokio::test]
 async fn eye_in_desk_camera_control() {
     let mut eid = EyeInDesk::default_connect().await;
-    eid.camera_control(10., 10.).await.unwrap();
+    eid.camera_control(10., 0.).await.unwrap();
 }
 
 #[tokio::test]
@@ -338,4 +369,10 @@ async fn eye_in_desk_set_real_robot_target() {
     let mut t = state.transform;
     t.translation.z += 0.1;
     eid.set_real_robot_target(t).await.unwrap();
+}
+
+#[tokio::test]
+async fn eye_in_desk_set_robot_mode() {
+    let mut eid = EyeInDesk::default_connect().await;
+    eid.set_robot_mode(RobotMode::Target).await.unwrap();
 }
